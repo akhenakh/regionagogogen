@@ -8,6 +8,8 @@
 
 #import <Foundation/Foundation.h>
 #import "NBS2Geometry.h"
+#import "NBS2CellId.h"
+#import "MPMessagePack.h"
 
 void usage() {
   printf("regionagogogen [GEOJSONFILE]\n");
@@ -28,7 +30,7 @@ BOOL importGeoJSON(NSDictionary *d) {
   NSMutableArray *rs = [NSMutableArray array];
   
   // CellIDLoopStorage
-  NSMutableArray *cl = [NSMutableArray array];
+  NSMutableDictionary *cl = [NSMutableDictionary dictionary];
 
   
   NSArray *features = d[@"features"];
@@ -74,63 +76,60 @@ BOOL importGeoJSON(NSDictionary *d) {
       NSArray *tmpArray = [multipolygons firstObject];
       
       NSLog(@"loopID %d, code %@ region %@", loopID, code, region);
-      if ([code isEqualToString:@"AF"]) {
-        continue;
-      }
       
-      if ([code isEqualToString:@"AX"]) {
-        continue;
-      }
-      
-      if ([code isEqualToString:@"AL"]) {
-        continue;
-      }
-      if ([code isEqualToString:@"AO"]) {
-        continue;
-      }
-      if ([code isEqualToString:@"CV"]) {
-        continue;
-      }
-      
-      if ([code isEqualToString:@"DZ"]) {
-        continue;
-      }
-      if ([code isEqualToString:@"CI"]) {
-        continue;
-      }
-      if ([code isEqualToString:@"BR"]) {
-        continue;
-        if ([region isEqualToString:@"So Paulo"] || [region isEqualToString:@"Pernambuco"] || [region isEqualToString:@"Maranho"] || [region isEqualToString:@"Minas Gerais"] || [region isEqualToString:@"Cear"] || [region isEqualToString:@"Piau"]) {
-          NSLog(@"SKIP  code %@ region %@", code, region);
-        continue;
-        }
-      }
-      // skip Gourma
-      if ([code isEqualToString:@"BF"]) {
-        continue;
-        if ([region isEqualToString:@"Gourma"] || [region isEqualToString:@"Houet"] || [region isEqualToString:@"Kndougou"] || [region isEqualToString:@"Banwa"] || [region isEqualToString:@"Kossi"] || [region isEqualToString:@"Bal"] || [region isEqualToString:@"Mou Houn"] || [region isEqualToString:@"Oudalan"] || [region isEqualToString:@"Soum"] || [region isEqualToString:@"Nayala"] || [region isEqualToString:@"Sourou"] || [region isEqualToString:@"Bam"] || [region isEqualToString:@"Boulkiemd"] || [region isEqualToString:@"Kourwogo"] || [region isEqualToString:@"Bazga"] || [region isEqualToString:@"Kadiogo"] || [region isEqualToString:@"Oubritenga"] || [region isEqualToString:@"Passor"] || [region isEqualToString:@"Zondoma"] || [region isEqualToString:@"Sangui"] || [region isEqualToString:@"Sissili"] || [region isEqualToString:@"Ziro"] || [region isEqualToString:@"Loroum"] || [region isEqualToString:@"Yatenga"] || [region isEqualToString:@"Namentenga"] || [region isEqualToString:@"Sanmatenga"] || [region isEqualToString:@"Boulgou"] || [region isEqualToString:@"Koulplogo"] || [region isEqualToString:@"Ganzourgou"] || [region isEqualToString:@"Kouritenga"] || [region isEqualToString:@"Nahouri"] || [region isEqualToString:@"Zoundwogo"] || [region isEqualToString:@"Bougouriba"]) {
-          NSLog(@"SKIP  code %@ region %@", code, region);
-          continue;
-        }
-      }
       NSArray *coverCellIDs = [NBS2Geometry cellIdsForPolygon:tmpArray];
       if (!coverCellIDs) {
         continue;
       }
+      
       if (!properties[@"iso_a2"]) {
         NSLog(@"can't find country code %@", feature);
         exit(2);
       }
       
-      NSLog(@"cover %@", coverCellIDs);
+      NSMutableArray *cellIdsAsInt = [NSMutableArray arrayWithCapacity:coverCellIDs.count];
+      for (NBS2CellId *cell in coverCellIDs) {
+        [cellIdsAsInt addObject:@([cell unsignedIntegerValue])];
+        
+        if (!cl[@([cell unsignedIntegerValue])]) {
+          cl[@([cell unsignedIntegerValue])] = [NSMutableArray array];
+        }
+        
+        [cl[@([cell unsignedIntegerValue])] addObject:@(loopID)];
+        
+      }
+      
+      // add the msgpack "c" to the points
+      NSMutableArray *cPoint = [NSMutableArray arrayWithCapacity:tmpArray.count];
+  
+      // reverse the list & remove last for the Go implem
+      [[[tmpArray reverseObjectEnumerator] allObjects] enumerateObjectsUsingBlock:^(NSArray *p, NSUInteger idx, BOOL * _Nonnull stop) {
+        if (idx == tmpArray.count -1) {
+          *stop = YES;
+          return;
+        }
+        NSDictionary *d = @{@"c": @[p[1], p[0]]};
+        [cPoint addObject:d];
+      }];
+      
+      [rs addObject:@{@"n": region, @"i": code, @"p": cPoint, @"c": cellIdsAsInt}];
       
       loopID++;
       
     }
     
+    
   }
   
-  return YES;
+  NSMutableArray *clstorage = [NSMutableArray array];
+  [cl enumerateKeysAndObjectsUsingBlock:^(id  _Nonnull key, id  _Nonnull obj, BOOL * _Nonnull stop) {
+    [clstorage addObject:@{@"c": key, @"l": obj}];
+  }];
+  
+  NSDictionary *dstore = @{@"rs": rs, @"cl": clstorage};
+  NSData *data = [dstore mp_messagePack];
+  
+  return [data writeToFile:@"geodata" atomically:YES];
 }
 
 int main(int argc, const char * argv[]) {

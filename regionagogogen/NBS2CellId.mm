@@ -72,7 +72,10 @@
 - (NSString *) description {
   CLLocationCoordinate2D coordinate = [self coordinate];
   return [NSString stringWithFormat:@"%llx level:%d lat: %f lng: %f",cell.id(), cell.level(), coordinate.latitude, coordinate.longitude];
+}
 
+- (uint64_t)unsignedIntegerValue {
+  return cell.id();
 }
 
 @end

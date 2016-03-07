@@ -19,6 +19,7 @@
 
 // return big endian uint64 data representation
 - (NSData *)data;
+- (uint64_t)unsignedIntegerValue;
 
 + (instancetype)cellWithId:(uint64_t)cellId;
 + (instancetype)cellIdForCoordinate:(CLLocationCoordinate2D)coordinate;
