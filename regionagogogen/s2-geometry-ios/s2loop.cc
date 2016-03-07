@@ -13,13 +13,12 @@ using std::multiset;
 #include <vector>
 using std::vector;
 
-#if defined __GNUC__ || defined __APPLE__
+#ifdef __GNUC__
 #include <ext/hash_map>
 #else
 #include <hash_map>
 #endif
 using __gnu_cxx::hash_map;
-
 
 #include <utility>
 using std::pair;
@@ -51,23 +50,23 @@ int S2LoopIndex::num_edges() const {
 }
 
 S2Loop::S2Loop()
-  : num_vertices_(0),
-    vertices_(NULL),
-    owns_vertices_(false),
-    bound_(S2LatLngRect::Empty()),
-    depth_(0),
-    index_(this),
-    num_find_vertex_calls_(0) {
+: num_vertices_(0),
+vertices_(NULL),
+owns_vertices_(false),
+bound_(S2LatLngRect::Empty()),
+depth_(0),
+index_(this),
+num_find_vertex_calls_(0) {
 }
 
 S2Loop::S2Loop(vector<S2Point> const& vertices)
-  : num_vertices_(0),
-    vertices_(NULL),
-    owns_vertices_(false),
-    bound_(S2LatLngRect::Full()),
-    depth_(0),
-    index_(this),
-    num_find_vertex_calls_(0) {
+: num_vertices_(0),
+vertices_(NULL),
+owns_vertices_(false),
+bound_(S2LatLngRect::Full()),
+depth_(0),
+index_(this),
+num_find_vertex_calls_(0) {
   Init(vertices);
 }
 
@@ -79,7 +78,7 @@ void S2Loop::ResetMutableFields() {
 
 void S2Loop::Init(vector<S2Point> const& vertices) {
   ResetMutableFields();
-
+  
   if (owns_vertices_) delete[] vertices_;
   num_vertices_ = vertices.size();
   if (vertices.empty()) {
@@ -90,7 +89,7 @@ void S2Loop::Init(vector<S2Point> const& vertices) {
   }
   owns_vertices_ = true;
   bound_ = S2LatLngRect::Full();
-
+  
   // InitOrigin() must be called before InitBound() because the latter
   // function expects Contains() to work properly.
   InitOrigin();
@@ -100,13 +99,13 @@ void S2Loop::Init(vector<S2Point> const& vertices) {
 bool S2Loop::IsValid() const {
   // Loops must have at least 3 vertices.
   if (num_vertices() < 3) {
-    VLOG(2) << "Degenerate loop";
+    //    VLOG(2) << "Degenerate loop";
     return false;
   }
   // All vertices must be unit length.
   for (int i = 0; i < num_vertices(); ++i) {
     if (!S2::IsUnitLength(vertex(i))) {
-      VLOG(2) << "Vertex " << i << " is not unit length";
+      //      VLOG(2) << "Vertex " << i << " is not unit length";
       return false;
     }
   }
@@ -114,7 +113,7 @@ bool S2Loop::IsValid() const {
   hash_map<S2Point, int> vmap;
   for (int i = 0; i < num_vertices(); ++i) {
     if (!vmap.insert(make_pair(vertex(i), i)).second) {
-      VLOG(2) << "Duplicate vertices: " << vmap[vertex(i)] << " and " << i;
+      //      VLOG(2) << "Duplicate vertices: " << vmap[vertex(i)] << " and " << i;
       return false;
     }
   }
@@ -137,25 +136,25 @@ bool S2Loop::IsValid() const {
         crosses = crosser.RobustCrossing(&vertex(ai+1)) > 0;
         previous_index = ai + 1;
         if (crosses) {
-          VLOG(2) << "Edges " << i << " and " << ai << " cross";
+          //          VLOG(2) << "Edges " << i << " and " << ai << " cross";
           // additional debugging information:
-          VLOG(2) << "Edge locations in degrees: "
-                  << S2LatLng(vertex(i)) << "-" << S2LatLng(vertex(i+1))
-                  << " and "
-                  << S2LatLng(vertex(ai)) << "-" << S2LatLng(vertex(ai+1));
+          //          VLOG(2) << "Edge locations in degrees: "
+          //                  << S2LatLng(vertex(i)) << "-" << S2LatLng(vertex(i+1))
+          //                  << " and "
+          //                  << S2LatLng(vertex(ai)) << "-" << S2LatLng(vertex(ai+1));
           break;
         }
       }
     }
     if (crosses) break;
   }
-
+  
   return !crosses;
 }
 
 bool S2Loop::IsValid(vector<S2Point> const& vertices, int max_adjacent) {
   if (vertices.size() < 3) return false;
-
+  
   S2Loop loop(vertices);
   return loop.IsValid();
 }
@@ -168,8 +167,8 @@ void S2Loop::InitOrigin() {
   // The bounding box does not need to be correct before calling this
   // function, but it must at least contain vertex(1) since we need to
   // do a Contains() test on this point below.
-  DCHECK(bound_.Contains(vertex(1)));
-
+  //  DCHECK(bound_.Contains(vertex(1)));
+  
   // To ensure that every point is contained in exactly one face of a
   // subdivision of the sphere, all containment tests are done by counting the
   // edge crossings starting at a fixed point on the sphere (S2::Origin()).
@@ -181,7 +180,7 @@ void S2Loop::InitOrigin() {
   // A loop with consecutive vertices A,B,C contains vertex B if and only if
   // the fixed vector R = S2::Ortho(B) is on the left side of the wedge ABC.
   // The test below is written so that B is inside if C=R but not if A=R.
-
+  
   origin_inside_ = false;  // Initialize before calling Contains().
   bool v1_inside = S2::OrderedCCW(S2::Ortho(vertex(1)), vertex(0), vertex(2),
                                   vertex(1));
@@ -195,7 +194,7 @@ void S2Loop::InitBound() {
   // around the sphere (e.g. a loop that defines two revolutions of a
   // candy-cane stripe).  Second, the loop may include one or both poles.
   // Note that a small clockwise loop near the equator contains both poles.
-
+  
   S2EdgeUtil::RectBounder bounder;
   for (int i = 0; i <= num_vertices(); ++i) {
     bounder.AddPoint(&vertex(i));
@@ -219,9 +218,9 @@ void S2Loop::InitBound() {
 }
 
 S2Loop::S2Loop(S2Cell const& cell)
-    : bound_(cell.GetRectBound()),
-      index_(this),
-      num_find_vertex_calls_(0) {
+: bound_(cell.GetRectBound()),
+index_(this),
+num_find_vertex_calls_(0) {
   num_vertices_ = 4;
   vertices_ = new S2Point[num_vertices_];
   depth_ = 0;
@@ -240,14 +239,14 @@ S2Loop::~S2Loop() {
 }
 
 S2Loop::S2Loop(S2Loop const* src)
-  : num_vertices_(src->num_vertices_),
-    vertices_(new S2Point[num_vertices_]),
-    owns_vertices_(true),
-    bound_(src->bound_),
-    origin_inside_(src->origin_inside_),
-    depth_(src->depth_),
-    index_(this),
-    num_find_vertex_calls_(0) {
+: num_vertices_(src->num_vertices_),
+vertices_(new S2Point[num_vertices_]),
+owns_vertices_(true),
+bound_(src->bound_),
+origin_inside_(src->origin_inside_),
+depth_(src->depth_),
+index_(this),
+num_find_vertex_calls_(0) {
   memcpy(vertices_, src->vertices_, num_vertices_ * sizeof(vertices_[0]));
 }
 
@@ -264,13 +263,13 @@ int S2Loop::FindVertex(S2Point const& p) const {
     }
     return -1;
   }
-
+  
   if (vertex_to_index_.empty()) {  // We haven't computed it yet.
     for (int i = num_vertices(); i > 0; --i) {
       vertex_to_index_[vertex(i)] = i;
     }
   }
-
+  
   map<S2Point, int>::const_iterator it;
   it = vertex_to_index_.find(p);
   if (it == vertex_to_index_.end()) return -1;
@@ -282,7 +281,7 @@ bool S2Loop::IsNormalized() const {
   // Optimization: if the longitude span is less than 180 degrees, then the
   // loop covers less than half the sphere and is therefore normalized.
   if (bound_.lng().GetLength() < M_PI) return true;
-
+  
   // We allow some error so that hemispheres are always considered normalized.
   // TODO(user): This might not be necessary once S2Polygon is enhanced so
   // that it does not require its input loops to be normalized.
@@ -290,14 +289,14 @@ bool S2Loop::IsNormalized() const {
 }
 
 void S2Loop::Normalize() {
-  CHECK(owns_vertices_);
+  //  CHECK(owns_vertices_);
   if (!IsNormalized()) Invert();
-  DCHECK(IsNormalized());
+  //  DCHECK(IsNormalized());
 }
 
 void S2Loop::Invert() {
-  CHECK(owns_vertices_);
-
+  //  CHECK(owns_vertices_);
+  
   ResetMutableFields();
   reverse(vertices_, vertices_ + num_vertices());
   origin_inside_ ^= true;
@@ -312,7 +311,7 @@ void S2Loop::Invert() {
 double S2Loop::GetArea() const {
   double area = GetSurfaceIntegral(S2::SignedArea);
   // The signed area should be between approximately -4*Pi and 4*Pi.
-  DCHECK_LE(fabs(area), 4 * M_PI + 1e-12);
+  //  DCHECK_LE(fabs(area), 4 * M_PI + 1e-12);
   if (area < 0) {
     // We have computed the negative of the area of the loop exterior.
     area += 4 * M_PI;
@@ -349,7 +348,7 @@ int S2Loop::GetCanonicalFirstVertex(int* dir) const {
 double S2Loop::GetTurningAngle() const {
   // Don't crash even if the loop is not well-defined.
   if (num_vertices() < 3) return 0;
-
+  
   // To ensure that we get the same result when the loop vertex order is
   // rotated, and that we get the same result with the opposite sign when the
   // vertices are reversed, we need to be careful to add up the individual
@@ -373,7 +372,7 @@ S2Cap S2Loop::GetCapBound() const {
 bool S2Loop::Contains(S2Cell const& cell) const {
   // A future optimization could also take advantage of the fact than an S2Cell
   // is convex.
-
+  
   // It's not necessarily true that bound_.Contains(cell.GetRectBound())
   // because S2Cell bounds are slightly conservative.
   if (!bound_.Contains(cell.GetCenter())) return false;
@@ -385,18 +384,18 @@ bool S2Loop::MayIntersect(S2Cell const& cell) const {
   // It is faster to construct a bounding rectangle for an S2Cell than for
   // a general polygon.  A future optimization could also take advantage of
   // the fact than an S2Cell is convex.
-
+  
   if (!bound_.Intersects(cell.GetRectBound())) return false;
   return S2Loop(cell).Intersects(this);
 }
 
 bool S2Loop::Contains(S2Point const& p) const {
   if (!bound_.Contains(p)) return false;
-
+  
   bool inside = origin_inside_;
   S2Point origin = S2::Origin();
   S2EdgeUtil::EdgeCrosser crosser(&origin, &p, &vertex(0));
-
+  
   // The s2edgeindex library is not optimized yet for long edges,
   // so the tradeoff to using it comes later.
   if (num_vertices() < 2000) {
@@ -405,7 +404,7 @@ bool S2Loop::Contains(S2Point const& p) const {
     }
     return inside;
   }
-
+  
   S2EdgeIndex::Iterator it(&index_);
   int previous_index = -2;
   for (it.GetCandidates(origin, p); !it.Done(); it.Next()) {
@@ -419,14 +418,14 @@ bool S2Loop::Contains(S2Point const& p) const {
 
 void S2Loop::Encode(Encoder* const encoder) const {
   encoder->Ensure(num_vertices_ * sizeof(*vertices_) + 20);  // sufficient
-
+  
   encoder->put8(kCurrentEncodingVersionNumber);
   encoder->put32(num_vertices_);
   encoder->putn(vertices_, sizeof(*vertices_) * num_vertices_);
   encoder->put8(origin_inside_);
   encoder->put32(depth_);
-  DCHECK_GE(encoder->avail(), 0);
-
+  //  DCHECK_GE(encoder->avail(), 0);
+  
   bound_.Encode(encoder);
 }
 
@@ -442,12 +441,12 @@ bool S2Loop::DecodeInternal(Decoder* const decoder,
                             bool within_scope) {
   unsigned char version = decoder->get8();
   if (version > kCurrentEncodingVersionNumber) return false;
-
+  
   num_vertices_ = decoder->get32();
   if (owns_vertices_) delete[] vertices_;
   if (within_scope) {
     vertices_ = const_cast<S2Point *>(reinterpret_cast<S2Point const*>(
-                    decoder->ptr()));
+                                                                       decoder->ptr()));
     decoder->skip(num_vertices_ * sizeof(*vertices_));
     owns_vertices_ = false;
   } else {
@@ -457,10 +456,10 @@ bool S2Loop::DecodeInternal(Decoder* const decoder,
   }
   origin_inside_ = decoder->get8();
   depth_ = decoder->get32();
-  if (!bound_.Decode(decoder)) return false;
-
-  DCHECK(IsValid());
-
+  //  if (!bound_.Decode(decoder)) return false;
+  
+  //  DCHECK(IsValid());
+  
   return decoder->avail() >= 0;
 }
 
@@ -476,16 +475,16 @@ bool S2Loop::DecodeInternal(Decoder* const decoder,
 // then query this internal state in the function that called
 // AreBoundariesCrossing.
 class WedgeProcessor {
- public:
+public:
   virtual ~WedgeProcessor() { }
-
+  
   virtual bool ProcessWedge(S2Point const& a0, S2Point const& ab1,
                             S2Point const& a2, S2Point const& b0,
                             S2Point const& b2) = 0;
 };
 
 bool S2Loop::AreBoundariesCrossing(
-    S2Loop const* b, WedgeProcessor* wedge_processor) const {
+                                   S2Loop const* b, WedgeProcessor* wedge_processor) const {
   // See the header file for a description of what this method does.
   index_.PredictAdditionalCalls(b->num_vertices());
   S2EdgeIndex::Iterator it(&index_);
@@ -506,8 +505,8 @@ bool S2Loop::AreBoundariesCrossing(
       if (vertex(ai+1) == b->vertex(j+1) &&
           wedge_processor->ProcessWedge(vertex(ai), vertex(ai+1), vertex(ai+2),
                                         b->vertex(j), b->vertex(j+2))) {
-        return false;
-      }
+            return false;
+          }
     }
   }
   return false;
@@ -518,19 +517,19 @@ bool S2Loop::AreBoundariesCrossing(
 // contained in the associated wedge of A (and hence loop B is not
 // contained in loop A).
 class ContainsWedgeProcessor: public WedgeProcessor {
- public:
+public:
   ContainsWedgeProcessor(): doesnt_contain_(false) {}
   bool DoesntContain() { return doesnt_contain_; }
-
- protected:
+  
+protected:
   virtual bool ProcessWedge(S2Point const& a0, S2Point const& ab1,
                             S2Point const& a2, S2Point const& b0,
                             S2Point const& b2) {
     doesnt_contain_ = !S2EdgeUtil::WedgeContains(a0, ab1, a2, b0, b2);
     return doesnt_contain_;
   }
-
- private:
+  
+private:
   bool doesnt_contain_;
 };
 
@@ -550,22 +549,22 @@ bool S2Loop::Contains(S2Loop const* b) const {
   // The second part of (3) is necessary to detect the case of two loops whose
   // union is the entire sphere, i.e. two loops that contains each other's
   // boundaries but not each other's interiors.
-
+  
   if (!bound_.Contains(b->bound_)) return false;
-
+  
   // Unless there are shared vertices, we need to check whether A contains a
   // vertex of B.  Since shared vertices are rare, it is more efficient to do
   // this test up front as a quick rejection test.
   if (!Contains(b->vertex(0)) && FindVertex(b->vertex(0)) < 0)
     return false;
-
+  
   // Now check whether there are any edge crossings, and also check the loop
   // relationship at any shared vertices.
   ContainsWedgeProcessor p_wedge;
   if (AreBoundariesCrossing(b, &p_wedge) || p_wedge.DoesntContain()) {
     return false;
   }
-
+  
   // At this point we know that the boundaries of A and B do not intersect,
   // and that A contains a vertex of B.  However we still need to check for
   // the case mentioned above, where (A union B) is the entire sphere.
@@ -580,19 +579,19 @@ bool S2Loop::Contains(S2Loop const* b) const {
 // Intersects() then returns true when A and B have at least one pair
 // of associated wedges that intersect.
 class IntersectsWedgeProcessor: public WedgeProcessor {
- public:
+public:
   IntersectsWedgeProcessor(): intersects_(false) {}
   bool Intersects() { return intersects_; }
-
- protected:
+  
+protected:
   virtual bool ProcessWedge(S2Point const& a0, S2Point const& ab1,
                             S2Point const& a2, S2Point const& b0,
                             S2Point const& b2) {
     intersects_ = S2EdgeUtil::WedgeIntersects(a0, ab1, a2, b0, b2);
     return intersects_;
   }
-
- private:
+  
+private:
   bool intersects_;
 };
 
@@ -600,25 +599,25 @@ bool S2Loop::Intersects(S2Loop const* b) const {
   // a->Intersects(b) if and only if !a->Complement()->Contains(b).
   // This code is similar to Contains(), but is optimized for the case
   // where both loops enclose less than half of the sphere.
-
+  
   // The largest of the two loops should be edgeindex'd.
   if (b->num_vertices() > num_vertices()) return b->Intersects(this);
-
+  
   if (!bound_.Intersects(b->bound_)) return false;
-
+  
   // Unless there are shared vertices, we need to check whether A contains a
   // vertex of B.  Since shared vertices are rare, it is more efficient to do
   // this test up front as a quick acceptance test.
   if (Contains(b->vertex(0)) && FindVertex(b->vertex(0)) < 0)
     return true;
-
+  
   // Now check whether there are any edge crossings, and also check the loop
   // relationship at any shared vertices.
   IntersectsWedgeProcessor p_wedge;
   if (AreBoundariesCrossing(b, &p_wedge) || p_wedge.Intersects()) {
     return true;
   }
-
+  
   // We know that A does not contain a vertex of B, and that there are no edge
   // crossings.  Therefore the only way that A can intersect B is if B
   // entirely contains A.  We can check this by testing whether B contains an
@@ -636,43 +635,43 @@ bool S2Loop::Intersects(S2Loop const* b) const {
 // CrossesOrMayContain() then returns -1 if A crossed B, 0 if it is
 // not possible for A to contain B, and 1 otherwise.
 class ContainsOrCrossesProcessor: public WedgeProcessor {
- public:
+public:
   ContainsOrCrossesProcessor():
-      has_boundary_crossing_(false),
-      a_has_strictly_super_wedge_(false), b_has_strictly_super_wedge_(false),
-      has_disjoint_wedge_(false) {}
-
+  has_boundary_crossing_(false),
+  a_has_strictly_super_wedge_(false), b_has_strictly_super_wedge_(false),
+  has_disjoint_wedge_(false) {}
+  
   int CrossesOrMayContain() {
     if (has_boundary_crossing_) return -1;
     if (has_disjoint_wedge_ || b_has_strictly_super_wedge_) return 0;
     return 1;
   }
-
- protected:
+  
+protected:
   virtual bool ProcessWedge(S2Point const& a0, S2Point const& ab1,
                             S2Point const& a2, S2Point const& b0,
                             S2Point const& b2) {
     const S2EdgeUtil::WedgeRelation wedge_relation =
-        S2EdgeUtil::GetWedgeRelation(a0, ab1, a2, b0, b2);
+    S2EdgeUtil::GetWedgeRelation(a0, ab1, a2, b0, b2);
     if (wedge_relation == S2EdgeUtil::WEDGE_PROPERLY_OVERLAPS) {
       has_boundary_crossing_ = true;
       return true;
     }
-
+    
     a_has_strictly_super_wedge_ |=
-        (wedge_relation == S2EdgeUtil::WEDGE_PROPERLY_CONTAINS);
+    (wedge_relation == S2EdgeUtil::WEDGE_PROPERLY_CONTAINS);
     b_has_strictly_super_wedge_ |=
-        (wedge_relation == S2EdgeUtil::WEDGE_IS_PROPERLY_CONTAINED);
+    (wedge_relation == S2EdgeUtil::WEDGE_IS_PROPERLY_CONTAINED);
     if (a_has_strictly_super_wedge_ && b_has_strictly_super_wedge_) {
       has_boundary_crossing_ = true;
       return true;
     }
-
+    
     has_disjoint_wedge_ |= (wedge_relation == S2EdgeUtil::WEDGE_IS_DISJOINT);
     return false;
   }
-
- private:
+  
+private:
   // True if any crossing on the boundary is discovered.
   bool has_boundary_crossing_;
   // True if A (B) has a strictly superwedge on a pair of wedges that
@@ -687,7 +686,7 @@ class ContainsOrCrossesProcessor: public WedgeProcessor {
 int S2Loop::ContainsOrCrosses(S2Loop const* b) const {
   // There can be containment or crossing only if the bounds intersect.
   if (!bound_.Intersects(b->bound_)) return 0;
-
+  
   // Now check whether there are any edge crossings, and also check the loop
   // relationship at any shared vertices.  Note that unlike Contains() or
   // Intersects(), we can't do a point containment test as a shortcut because
@@ -698,7 +697,7 @@ int S2Loop::ContainsOrCrosses(S2Loop const* b) const {
   }
   const int result = p_wedge.CrossesOrMayContain();
   if (result <= 0) return result;
-
+  
   // At this point we know that the boundaries do not intersect, and we are
   // given that (A union B) is a proper subset of the sphere.  Furthermore
   // either A contains B, or there are no shared vertices (due to the check
@@ -711,7 +710,7 @@ int S2Loop::ContainsOrCrosses(S2Loop const* b) const {
 
 bool S2Loop::ContainsNested(S2Loop const* b) const {
   if (!bound_.Contains(b->bound_)) return false;
-
+  
   // We are given that A and B do not share any edges, and that either one
   // loop contains the other or they do not intersect.
   int m = FindVertex(b->vertex(1));
@@ -770,7 +769,7 @@ static bool MatchBoundaries(S2Loop const* a, S2Loop const* b, int a_offset,
   // choice leads to a solution.  We handle this using a stack and
   // backtracking.  We also keep track of which states have already been
   // explored to avoid duplicating work.
-
+  
   vector<pair<int, int> > pending;
   set<pair<int, int> > done;
   pending.push_back(make_pair(0, 0));
@@ -782,25 +781,25 @@ static bool MatchBoundaries(S2Loop const* a, S2Loop const* b, int a_offset,
       return true;
     }
     done.insert(make_pair(i, j));
-
+    
     // If (i == na && offset == na-1) where na == a->num_vertices(), then
     // then (i+1+offset) overflows the [0, 2*na-1] range allowed by vertex().
     // So we reduce the range if necessary.
     int io = i + a_offset;
     if (io >= a->num_vertices()) io -= a->num_vertices();
-
+    
     if (i < a->num_vertices() && done.count(make_pair(i+1, j)) == 0 &&
         S2EdgeUtil::GetDistance(a->vertex(io+1),
                                 b->vertex(j),
                                 b->vertex(j+1)).radians() <= max_error) {
-      pending.push_back(make_pair(i+1, j));
-    }
+          pending.push_back(make_pair(i+1, j));
+        }
     if (j < b->num_vertices() && done.count(make_pair(i, j+1)) == 0 &&
         S2EdgeUtil::GetDistance(b->vertex(j+1),
                                 a->vertex(io),
                                 a->vertex(io+1)).radians() <= max_error) {
-      pending.push_back(make_pair(i, j+1));
-    }
+          pending.push_back(make_pair(i, j+1));
+        }
   }
   return false;
 }
