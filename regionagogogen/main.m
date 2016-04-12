@@ -12,10 +12,10 @@
 #import "MPMessagePack.h"
 
 void usage() {
-  printf("regionagogogen [GEOJSONFILE]\n");
+  printf("regionagogogen [GEOJSONFILE] field1 field2 ...\n");
 }
 
-BOOL importGeoJSON(NSDictionary *d) {
+BOOL importGeoJSON(NSDictionary *d, NSArray *fields) {
   if (!d[@"features"]) {
     return NO;
   }
@@ -58,15 +58,13 @@ BOOL importGeoJSON(NSDictionary *d) {
       return NO;
     }
     
-    if (!properties[@"iso_a2"]) {
-      NSLog(@"can't find country code %@", feature);
-      exit(2);
-    }
-    NSString *code = properties[@"iso_a2"];
+    NSMutableDictionary *d = [NSMutableDictionary dictionary];
     
-    NSString *region = properties[@"name"];
-    if (!region) {
-      region = properties[@"region"];
+    for (NSString *field in fields) {
+      if (!properties[field]) {
+        NSLog(@"can't find field %@ on %@", field, feature);
+        continue;
+      }
     }
     
     
@@ -75,17 +73,14 @@ BOOL importGeoJSON(NSDictionary *d) {
       // "Polygon", the "coordinates" member must be an array of LinearRing coordinate arrays. For Polygons with multiple rings, the first must be the exterior ring and any others must be interior rings or holes.
       NSArray *tmpArray = [multipolygons firstObject];
       
-      NSLog(@"loopID %d, code %@ region %@", loopID, code, region);
       
       NSArray *coverCellIDs = [NBS2Geometry cellIdsForPolygon:tmpArray];
       if (!coverCellIDs) {
         continue;
       }
       
-      if (!properties[@"iso_a2"]) {
-        NSLog(@"can't find country code %@", feature);
-        exit(2);
-      }
+      NSLog(@"loopID %d, data %@ cells: %@", loopID, d, coverCellIDs);
+
       
       NSMutableArray *cellIdsAsInt = [NSMutableArray arrayWithCapacity:coverCellIDs.count];
       for (NBS2CellId *cell in coverCellIDs) {
@@ -112,12 +107,11 @@ BOOL importGeoJSON(NSDictionary *d) {
         [cPoint addObject:d];
       }];
       
-      [rs addObject:@{@"n": region, @"i": code, @"p": cPoint, @"c": cellIdsAsInt}];
+      [rs addObject:@{@"d": d, @"p": cPoint, @"c": cellIdsAsInt}];
       
       loopID++;
       
     }
-    
     
   }
   
@@ -135,7 +129,7 @@ BOOL importGeoJSON(NSDictionary *d) {
 int main(int argc, const char * argv[]) {
   @autoreleasepool {
       // insert code here...
-    if (argc != 2) {
+    if (argc < 3) {
       usage();
       exit(2);
     }
@@ -154,7 +148,10 @@ int main(int argc, const char * argv[]) {
       exit(2);
     }
     
-    if (!importGeoJSON(result)) {
+    NSArray *arguments = [[NSProcessInfo processInfo] arguments];
+    NSArray *fields = [arguments subarrayWithRange:NSMakeRange(2, [arguments count] - 2)];
+    
+    if (!importGeoJSON(result, fields)) {
       NSLog(@"Can't import file");
       exit(2);
     }
