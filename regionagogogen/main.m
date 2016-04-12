@@ -65,6 +65,7 @@ BOOL importGeoJSON(NSDictionary *d, NSArray *fields) {
         NSLog(@"can't find field %@ on %@", field, feature);
         continue;
       }
+      d[field] = properties[field];
     }
     
     
